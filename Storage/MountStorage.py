@@ -30,7 +30,7 @@ class MountStorage(IStorage[T]):
         try:
             self.mount_point.mkdir(parents=True, exist_ok=True)
             subprocess.run(
-                ["mount", "-o", "umask=000,sync", str(device), str(self.mount_point)],
+                ["sudo", "mount", "-o", "umask=000,sync", str(device), str(self.mount_point)],
                 check=True, capture_output=True
             )
             return True
