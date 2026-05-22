@@ -30,7 +30,7 @@ class MountStorage(IStorage[T]):
         try:
             self.mount_point.mkdir(parents=True, exist_ok=True)
             subprocess.run(
-                ["sudo", "mount", "-o", "umask=000", str(device), str(self.mount_point)],
+                ["mount", "-o", "umask=000,sync", str(device), str(self.mount_point)],
                 check=True, capture_output=True
             )
             return True
@@ -38,19 +38,9 @@ class MountStorage(IStorage[T]):
             logger.error(e)
             return False
 
-    def _safely_unmount(self):
-        if self._is_mounted():
-            try:
-                subprocess.run(["sync"])
-                subprocess.run(["sudo", "umount", str(self.mount_point)], check=True)
-            except subprocess.CalledProcessError as e:
-                logger.error(e)
-
     def write(self, data: T):
         try:
             device = self.deviceFactory()
             if not self._try_mount(device):
                 raise RuntimeError(f"MountStorage Error: Device {device} missing.")
             self.delegate_storage.write(data)
-        finally:
-            self._safely_unmount()
