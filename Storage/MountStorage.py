@@ -1,16 +1,16 @@
 import subprocess
 from collections.abc import Callable
+from datetime import datetime
+from pathlib import Path
 
 from Protocol import T
 from Storage import IStorage, FsStorage
-from datetime import datetime
-import os
-from pathlib import Path
+
 
 class MountStorage(IStorage[T]):
     """Hot-mount wrapper that passes the invariant type down to its internal writer."""
 
-    def __init__(self, deviceFactory: Callable[Path], mount_point: Path, filename: str, storage_label: str):
+    def __init__(self, deviceFactory: Callable[[], Path], mount_point: Path, filename: str, storage_label: str):
         self.deviceFactory = deviceFactory
         self.mount_point = mount_point
         target_file_path = mount_point / filename
