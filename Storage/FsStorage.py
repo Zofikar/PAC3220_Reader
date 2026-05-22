@@ -28,4 +28,6 @@ class FsStorage(IStorage[T]):
             if not file_exists:
                 writer.writeheader()
             writer.writerow(payload)
+            file.flush()
+            os.fsync(file.fileno())
         logger.info(f"Data written to {self.target_file_path}")
