@@ -1,3 +1,4 @@
+import logging
 import subprocess
 from collections.abc import Callable
 from datetime import datetime
@@ -6,6 +7,7 @@ from pathlib import Path
 from Protocol import T
 from Storage import IStorage, FsStorage
 
+logger = logging.getLogger("MountStorage")
 
 class MountStorage(IStorage[T]):
     """Hot-mount wrapper that passes the invariant type down to its internal writer."""
@@ -32,7 +34,8 @@ class MountStorage(IStorage[T]):
                 check=True, capture_output=True
             )
             return True
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as e:
+            logger.error(e)
             return False
 
     def _safely_unmount(self):
@@ -41,7 +44,7 @@ class MountStorage(IStorage[T]):
                 subprocess.run(["sync"])
                 subprocess.run(["sudo", "umount", str(self.mount_point)], check=True)
             except subprocess.CalledProcessError as e:
-                print(f"[{datetime.now()}] MountStorage Warning: Failed to unmount: {e}")
+                logger.error(e)
 
     def write(self, data: T):
         try:
