@@ -10,6 +10,8 @@ class CsvWriter(IWriter):
 
     @staticmethod
     def __read(file: Path) -> tuple[list[str], list[dict[str, Any]]]:
+        if not file.exists():
+            return [], []
         with open(file, "r", encoding='utf-8') as _fp:
             reader = csv.reader(_fp)
             try:
