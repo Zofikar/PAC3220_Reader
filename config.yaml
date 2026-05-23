@@ -9,6 +9,6 @@ registers:
     address: 64
     data_type: FLOAT32
 writer: json
-device_ip: 127.0.0.1
-device_port: 5020
+device_ip: 192.168.1.100
+device_port: 502
 device_id: 1
