@@ -9,7 +9,7 @@ from .IWriter import IWriter
 class JsonWriter(IWriter):
 
     def write(self, new_entry: dict[str, Any], file: Path):
-        with open(file, "w", encoding="utf-8") as _fp:
+        with open(file, "r", encoding="utf-8") as _fp:
             data: list[dict[str, Any]] = json.load(_fp)
         data.append(new_entry)
         with open(file, "w", encoding="utf-8") as _fp:
