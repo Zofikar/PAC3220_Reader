@@ -2,6 +2,11 @@
 import logging
 from pathlib import Path
 
+import yaml
+
+from Protocol.Protocol import DictWrapper
+from Storage.Writter import CsvWriter, JsonWriter
+
 BASE = Path(__file__).parent.absolute()
 
 logfile = BASE / "log.txt"
@@ -17,7 +22,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from Reader import Pac3220ModbusReader, Pac3320ModbusData
+config_file = BASE / "config.yaml"
+config = {}
+try:
+    with open(config_file) as f:
+        config = yaml.safe_load(f)
+except FileNotFoundError:
+    logger.warning(f"Config {config_file} not found.")
+
+from Reader import Pac3220ModbusReader, Pac3220ModbusFactory, ModbusTcpRegister
 from Storage import FsStorage, MountStorage, TieredStorage
 
 
@@ -39,16 +52,25 @@ def get_usb_device() -> Path:
 
     raise FileNotFoundError("Hotswap Failure: No active USB storage partition detected on the hub.")
 
-storage_engine = TieredStorage[Pac3320ModbusData]([
-    MountStorage[Pac3320ModbusData](get_usb_device, USB_MOUNT_POINT, FILENAME, "USB"),
-    FsStorage[Pac3320ModbusData](target_file_path=FAILOVER_STORAGE_PATH, storage_label="FAILOVER")
+
+writer_type = config.get("writer", "json")
+if writer_type == "csv":
+    writer = CsvWriter()
+else:
+    writer = JsonWriter()
+
+storage_engine = TieredStorage[DictWrapper]([
+    MountStorage[DictWrapper](get_usb_device, USB_MOUNT_POINT, FILENAME, "USB", writer=writer),
+    FsStorage[DictWrapper](target_file_path=FAILOVER_STORAGE_PATH, storage_label="FAILOVER", writer=writer)
 ])
 
 device_ip = "127.0.0.1"
 device_port = 5020
 device_id = 1
 
-reader = Pac3220ModbusReader(device_ip, device_port, device_id, storage_engine)
+factory = Pac3220ModbusFactory([ModbusTcpRegister.from_dict(d) for d in config["registers"]])
+
+reader = Pac3220ModbusReader(device_ip, device_port, device_id, factory, storage_engine)
 
 try:
     logger.info("Attempting to read data from device...")

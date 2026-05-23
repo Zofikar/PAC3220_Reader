@@ -7,3 +7,11 @@ class Serializable(Protocol):
         pass
 
 T = TypeVar('T', bound=Serializable)
+
+
+class DictWrapper(Serializable):
+    def __init__(self, data: Dict[str, Any]):
+        self.data = data
+
+    def to_dict(self) -> Dict[str, Any]:
+        return self.data

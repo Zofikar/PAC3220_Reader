@@ -1,52 +1,42 @@
-from dataclasses import dataclass, asdict
-from datetime import datetime
-from typing import Any
+from abc import abstractmethod, ABC
+from typing import Any, Generic
 
 from pymodbus.client import ModbusTcpClient
 from pymodbus.pdu import ModbusPDU
 
-from Protocol import Serializable
+from Protocol import T
 from Reader import IReader
 from Storage import IStorage
 
 
-@dataclass(frozen=True)
-class Pac3320ModbusData(Serializable):
-    L1_Voltage: float
-    L1_Current: float
-    TotalPower: float
-
-    timestamp: str = ""
-
-    def __post_init__(self):
-        object.__setattr__(self, "timestamp", datetime.now().strftime("%d.%m.%Y %H:%M"))
-        object.__setattr__(self, "L1_Voltage", round(self.L1_Voltage, 3))
-        object.__setattr__(self, "L1_Current", round(self.L1_Current, 3))
-        object.__setattr__(self, "TotalPower", round(self.TotalPower, 3))
-
-    def to_dict(self):
-        return asdict(self)
+def read_modbus_register(client: ModbusTcpClient, result: ModbusPDU, index: int, span: int,
+                         data_type: Any = None):
+    if data_type is None:
+        data_type = client.DATATYPE.FLOAT32
+    return client.convert_from_registers(
+        registers=result.registers[index:index + span],
+        data_type=data_type,
+        word_order="big"
+    )
 
 
-class Pac3220ModbusReader(IReader[Pac3320ModbusData]):
-    def __init__(self, ip: str, port: int, device_id: int, storage_engine: IStorage[Pac3320ModbusData]):
+class Pac3320ModbusDataFactory(ABC, Generic[T]):
+
+    @abstractmethod
+    def read_registers(self, client: ModbusTcpClient, result: ModbusPDU) -> T:
+        pass
+
+
+class Pac3220ModbusReader(IReader[T]):
+    def __init__(self, ip: str, port: int, device_id: int, data_factory: Pac3320ModbusDataFactory[T],
+                 storage_engine: IStorage[T]):
         self.ip = ip
         self.port = port
         self.device_id = device_id
+        self.data_factory = data_factory
         super().__init__(storage_engine)
 
-    @staticmethod
-    def __read_modbus_register(client: ModbusTcpClient, result: ModbusPDU, index: int, span: int,
-                               data_type: Any = None):
-        if data_type is None:
-            data_type = client.DATATYPE.FLOAT32
-        return client.convert_from_registers(
-            registers=result.registers[index:index + span],
-            data_type=data_type,
-            word_order="big"
-        )
-
-    def read(self) -> Pac3320ModbusData:
+    def read(self) -> T:
         client = ModbusTcpClient(self.ip, port=self.port)
         if not client.connect():
             raise ConnectionError("Connection failed.")
@@ -55,12 +45,7 @@ class Pac3220ModbusReader(IReader[Pac3320ModbusData]):
             result = client.read_holding_registers(address=0, count=66, device_id=self.device_id)
             if result.isError():
                 raise ConnectionError(f"Modbus read failed: {result}")
-            data = Pac3320ModbusData(
-                L1_Voltage=self.__read_modbus_register(client, result, 0, 2),
-                L1_Current=self.__read_modbus_register(client, result, 12, 2),
-                TotalPower=self.__read_modbus_register(client, result, 64, 2)
-            )
-            return data
+            return self.data_factory.read_registers(client, result)
         except ConnectionError as e:
             raise e
         except Exception as e:

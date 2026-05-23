@@ -1,23 +1,25 @@
 import logging
 import subprocess
 from collections.abc import Callable
-from datetime import datetime
 from pathlib import Path
 
 from Protocol import T
 from Storage import IStorage, FsStorage
+from Storage.Writter import IWriter
 
 logger = logging.getLogger("MountStorage")
 
 class MountStorage(IStorage[T]):
     """Hot-mount wrapper that passes the invariant type down to its internal writer."""
 
-    def __init__(self, deviceFactory: Callable[[], Path], mount_point: Path, filename: str, storage_label: str):
+    def __init__(self, deviceFactory: Callable[[], Path], mount_point: Path, filename: str, storage_label: str,
+                 writer: IWriter):
         self.deviceFactory = deviceFactory
         self.mount_point = mount_point
         target_file_path = mount_point / filename
 
-        self.delegate_storage = FsStorage[T](target_file_path=target_file_path, storage_label=storage_label)
+        self.delegate_storage = FsStorage[T](target_file_path=target_file_path, storage_label=storage_label,
+                                             writer=writer)
 
     def _is_mounted(self) -> bool:
         return self.mount_point.is_mount()
