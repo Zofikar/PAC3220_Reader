@@ -22,7 +22,7 @@ class JsonWriter(IWriter):
                     logger.warning(e)
                     (file.parent / "corrupted").mkdir(parents=True, exist_ok=True)
                     shutil.copy2(file,
-                                 file.parent / "corrupted" / (datetime.now().strftime("%d.%m.%Y %H:%M") + ".json"))
+                                 file.parent / "corrupted" / (datetime.now().strftime("%d.%m.%Y %H.%M") + ".json"))
         else:
             logger.info(f"File {file} doesn't exist")
         data.append(new_entry)
