@@ -4,11 +4,11 @@ registers:
     span: 2
     data_type: FLOAT32
   - name: L1_Current
-    address: 0
+    address: 12
     span: 2
     data_type: FLOAT32
   - name: TotalPower
-    address: 0
+    address: 64
     span: 2
     data_type: FLOAT32
 writer: json
