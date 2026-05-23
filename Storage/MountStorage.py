@@ -1,4 +1,5 @@
 import logging
+import os
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -22,7 +23,17 @@ class MountStorage(IStorage[T]):
                                              writer=writer)
 
     def _is_mounted(self) -> bool:
-        return self.mount_point.is_mount()
+        if not self.mount_point.is_mount():
+            return False
+        try:
+            with open(self.mount_point / "test.txt", "w") as f:
+                f.write('test')
+                f.flush()
+                os.fsync(f.fileno())
+        except (PermissionError, OSError, IOError) as e:
+            self._umount()
+            return False
+        return True
 
     def _try_mount(self, device: Path) -> bool:
         if not device.exists():
@@ -33,6 +44,18 @@ class MountStorage(IStorage[T]):
             self.mount_point.mkdir(parents=True, exist_ok=True)
             subprocess.run(
                 ["sudo", "mount", "-o", "umask=000,sync", str(device), str(self.mount_point)],
+                check=True, capture_output=True
+            )
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.error(e)
+            return False
+
+    def _umount(self) -> bool:
+        try:
+            self.mount_point.mkdir(parents=True, exist_ok=True)
+            subprocess.run(
+                ["sudo", "umount", "-l", str(self.mount_point)],
                 check=True, capture_output=True
             )
             return True

@@ -62,7 +62,7 @@ async def run_mock_server(ip="127.0.0.1", port=5020):
 
 if __name__ == "__main__":
     try:
-        asyncio.run(run_mock_server())
+        asyncio.run(run_mock_server("192.168.1.100", 502))
     except KeyboardInterrupt:
         print("\nServer stopped by user.")
     except Exception as e:
