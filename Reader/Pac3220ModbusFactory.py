@@ -12,7 +12,6 @@ from .Pac3220ModbusReader import Pac3320ModbusDataFactory, read_modbus_register
 class ModbusTcpRegister:
     name: str
     address: int
-    span: int = 2
     data_type: ModbusTcpClient.DATATYPE = ModbusTcpClient.DATATYPE.FLOAT32
 
     @staticmethod
@@ -31,6 +30,6 @@ class Pac3220ModbusFactory(Pac3320ModbusDataFactory[DictWrapper]):
             "timestamp": datetime.now().strftime("%d.%m.%Y %H:%M")
         }
         for register in self.registers:
-            data[register.name] = read_modbus_register(client, result, register.address, register.span,
+            data[register.name] = read_modbus_register(client, result, register.address, register.data_type.value[1],
                                                        register.data_type)
         return DictWrapper(data)

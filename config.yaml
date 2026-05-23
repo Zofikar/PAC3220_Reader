@@ -1,15 +1,12 @@
 registers:
   - name: L1_Voltage
     address: 0
-    span: 2
     data_type: FLOAT32
   - name: L1_Current
     address: 12
-    span: 2
     data_type: FLOAT32
   - name: TotalPower
     address: 64
-    span: 2
     data_type: FLOAT32
 writer: json
 device_ip: 127.0.0.1
