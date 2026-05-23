@@ -7,6 +7,7 @@ from pymodbus.pdu import ModbusPDU
 from Protocol import T
 from Reader import IReader
 from Storage import IStorage
+from main import device_id
 
 
 def read_modbus_register(client: ModbusTcpClient, result: ModbusPDU, index: int, span: int,
@@ -23,7 +24,7 @@ def read_modbus_register(client: ModbusTcpClient, result: ModbusPDU, index: int,
 class Pac3320ModbusDataFactory(ABC, Generic[T]):
 
     @abstractmethod
-    def read_registers(self, client: ModbusTcpClient, result: ModbusPDU) -> T:
+    def read_registers(self, client: ModbusTcpClient, device_id: int) -> T:
         pass
 
 
@@ -42,10 +43,7 @@ class Pac3220ModbusReader(IReader[T]):
             raise ConnectionError("Connection failed.")
 
         try:
-            result = client.read_holding_registers(address=0, count=66, device_id=self.device_id)
-            if result.isError():
-                raise ConnectionError(f"Modbus read failed: {result}")
-            return self.data_factory.read_registers(client, result)
+            return self.data_factory.read_registers(client, device_id)
         except ConnectionError as e:
             raise e
         except Exception as e:
