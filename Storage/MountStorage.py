@@ -44,4 +44,5 @@ class MountStorage(IStorage[T]):
         device = self.deviceFactory()
         if not self._try_mount(device):
             raise RuntimeError(f"MountStorage Error: Device {device} missing.")
+
         self.delegate_storage.write(data)

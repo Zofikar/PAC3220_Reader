@@ -4,8 +4,8 @@ from datetime import datetime
 from pymodbus.client import ModbusTcpClient
 from pymodbus.pdu import ModbusPDU
 
-from Pac3220ModbusReader import Pac3320ModbusDataFactory, read_modbus_register
 from Protocol.Protocol import DictWrapper
+from .Pac3220ModbusReader import Pac3320ModbusDataFactory, read_modbus_register
 
 
 @dataclass(frozen=True)
@@ -17,7 +17,7 @@ class ModbusTcpRegister:
 
     @staticmethod
     def from_dict(dct):
-        dct["data_type"] = ModbusTcpClient.DATATYPE(dct["data_type"])
+        dct["data_type"] = ModbusTcpClient.DATATYPE.__members__[dct["data_type"]]
         return ModbusTcpRegister(**dct)
 
 

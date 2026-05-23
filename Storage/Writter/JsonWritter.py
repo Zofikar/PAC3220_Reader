@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from IWriter import IWriter
+from .IWriter import IWriter
 
 
 class JsonWriter(IWriter):
