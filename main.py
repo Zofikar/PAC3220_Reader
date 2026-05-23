@@ -12,8 +12,6 @@ BASE = Path(__file__).parent.absolute()
 logfile = BASE / "log.txt"
 logfile.parent.mkdir(parents=True, exist_ok=True)
 USB_MOUNT_POINT = BASE / "usb"
-FILENAME = "Pac3220.csv"
-FAILOVER_STORAGE_PATH = BASE / "failover" / FILENAME
 logging.basicConfig(
     filename=logfile,
     filemode="a",
@@ -53,11 +51,16 @@ def get_usb_device() -> Path:
     raise FileNotFoundError("Hotswap Failure: No active USB storage partition detected on the hub.")
 
 
+FILENAME = "data"
 writer_type = config.get("writer", "json")
 if writer_type == "csv":
     writer = CsvWriter()
+    FILENAME += '.csv'
 else:
     writer = JsonWriter()
+    FILENAME += '.json'
+
+FAILOVER_STORAGE_PATH = BASE / "failover" / FILENAME
 
 storage_engine = TieredStorage[DictWrapper]([
     MountStorage[DictWrapper](get_usb_device, USB_MOUNT_POINT, FILENAME, "USB", writer=writer),
