@@ -64,16 +64,16 @@ storage_engine = TieredStorage[DictWrapper]([
     FsStorage[DictWrapper](target_file_path=FAILOVER_STORAGE_PATH, storage_label="FAILOVER", writer=writer)
 ])
 
-device_ip = "127.0.0.1"
-device_port = 5020
-device_id = 1
+device_ip = config.get("device_ip", "127.0.0.1")
+device_port = int(config.get("device_port", 5020))
+device_id = int(config.get("device_id", 1))
 
 factory = Pac3220ModbusFactory([ModbusTcpRegister.from_dict(d) for d in config["registers"]])
 
 reader = Pac3220ModbusReader(device_ip, device_port, device_id, factory, storage_engine)
 
 try:
-    logger.info("Attempting to read data from device...")
+    logger.info(f"Attempting to read data from device {device_ip}:{device_port} at id {device_id}...")
     reader.read_and_store()
     logger.info("Data read successfully.")
 except Exception as e:
