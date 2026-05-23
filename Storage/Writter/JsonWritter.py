@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -19,7 +20,9 @@ class JsonWriter(IWriter):
                     data = json.load(_fp)
                 except Exception as e:
                     logger.warning(e)
-                    file.copy(file.parent / "corrupted" / (datetime.now().strftime("%d.%m.%Y %H:%M") + ".json"))
+                    (file.parent / "corrupted").mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(file,
+                                 file.parent / "corrupted" / (datetime.now().strftime("%d.%m.%Y %H:%M") + ".json"))
         else:
             logger.info(f"File {file} doesn't exist")
         data.append(new_entry)
