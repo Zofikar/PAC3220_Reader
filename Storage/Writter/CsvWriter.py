@@ -13,7 +13,7 @@ class CsvWriter(IWriter):
         if not file.exists():
             return [], []
         with open(file, "r", encoding='utf-8') as _fp:
-            reader = csv.reader(_fp)
+            reader = csv.reader(_fp, delimiter=';')
             try:
                 header = next(reader)
             except StopIteration:
@@ -28,7 +28,7 @@ class CsvWriter(IWriter):
         data.append(new_entry)
         keys = sorted(list(keys))
         with open(file, "w", newline='', encoding='utf-8') as _fp:
-            writer = csv.writer(_fp)
+            writer = csv.writer(_fp, delimiter=';')
             writer.writerow(keys)
             writer.writerows([[entry.get(key) for key in keys] for entry in data])
             _fp.flush()
