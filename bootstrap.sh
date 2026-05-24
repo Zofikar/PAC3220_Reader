@@ -15,6 +15,20 @@ fi
 
 echo "Targeting user: $TARGET_USER ($TARGET_HOME)"
 
+# --- ensure git ---
+
+if ! command -v git &> /dev/null; then
+  echo "Git is not installed. Attempting to install it now..."
+
+  apt-get update && apt-get install -y git
+
+  if ! command -v git &> /dev/null; then
+    echo "Error: Failed to install Git. Please install it manually and try again."
+    exit 1
+  fi
+  echo "Git installed successfully."
+fi
+
 # --- clone the repo ---
 
 echo "Cloning repository into $TARGET_HOME..."
