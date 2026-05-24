@@ -1,14 +1,5 @@
-registers:
-  - name: L1_Voltage
-    address: 0
-    data_type: FLOAT32
-  - name: L1_Current
-    address: 12
-    data_type: FLOAT32
-  - name: TotalPower
-    address: 64
-    data_type: FLOAT32
-writer: json
+registers: [ 139,801,817,825 ]
+writer: csv
 device_ip: 192.168.1.100
 device_port: 502
 device_id: 1

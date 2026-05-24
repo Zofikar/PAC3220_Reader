@@ -1,43 +1,72 @@
 #!/usr/bin/env python3
 import asyncio
 import logging
+import random
 
-# Clean imports from modern root package namespace
 from pymodbus import ModbusDeviceIdentification
+from pymodbus.client import ModbusTcpClient
 from pymodbus.server import StartAsyncTcpServer
 from pymodbus.simulator import SimData, SimDevice, DataType
 
-# Configure logging
+from Reader.modbus_map import REGISTER_MAP
+
 logging.basicConfig()
 log = logging.getLogger()
 log.setLevel(logging.INFO)
 
 
+def to_enum(dt: ModbusTcpClient.DATATYPE) -> DataType:
+    return DataType[dt.name]
+
+
+def get_address_signature_value(address: int, modbus_type: DataType) -> float | int:
+    """
+    Generates a uniquely recognizable numeric pattern based directly on the register address.
+    """
+    drift = random.uniform(0, 0.05)
+
+    if modbus_type == DataType.FLOAT32:
+        # e.g., Address 13 (Current L1) -> 13.13 + drift
+        base = address + (address / 100.0) if address < 100 else address + (address / 1000.0)
+        return round(base + drift, 4)
+
+    elif modbus_type == DataType.FLOAT64:
+        # e.g., Address 801 (Energy Import) -> 801.801 + drift
+        base = address + (address / 1000.0)
+        return round(base + drift, 6)
+
+    elif modbus_type in (DataType.UINT32, DataType.INT32):
+        # e.g., Address 203 (Limit violations) -> 203
+        # No floating point drift for integers, but maybe an integer step change
+        return address
+
+    else:
+        return address
+
+
 async def run_mock_server(ip="127.0.0.1", port=5020):
     """
-    Runs a Mock Modbus TCP Server populated with PAC3220 simulator data.
+    Runs a Mock Modbus TCP Server fully populated by your auto-generated REGISTER_MAP.
     """
+    sim_data_list = []
 
-    # 1. Directly feed Python floats to SimData using DataType.FLOAT32!
-    # Pymodbus will automatically handle splitting these across 2 sequential registers.
-    # Note: Address 0 = Register 1, Address 12 = Register 13, Address 64 = Register 65.
-    sim_data_list = [
-        SimData(address=0, values=230.5, datatype=DataType.FLOAT32),  # L1_Voltage (Uses addresses 0 & 1)
-        SimData(address=12, values=5.25, datatype=DataType.FLOAT32),  # L1_Current (Uses addresses 12 & 13)
-        SimData(address=64, values=1500.0, datatype=DataType.FLOAT32)  # Total Active Power (Uses addresses 64 & 65)
-    ]
+    # Process the entire generated map dynamically
+    for address, (name, client_type) in REGISTER_MAP.items():
+        py_modbus_type = to_enum(client_type)
+        mock_value = get_address_signature_value(address, py_modbus_type)
 
-    # 2. Fill the remaining slots with dummy placeholder numbers.
-    # Since DataType.REGISTERS expects signed numbers, we can use small, clean increments.
-    used_addresses = {0, 1, 12, 13, 64, 65}
-    for addr in range(100):
-        if addr not in used_addresses:
-            sim_data_list.append(SimData(address=addr, values=[addr + 1], datatype=DataType.REGISTERS))
+        sim_data_list.append(
+            SimData(
+                address=address,
+                values=mock_value,
+                datatype=py_modbus_type
+            )
+        )
+        log.debug(f"Mapped {name} at address {address} -> Value: {mock_value}")
 
-    # 3. Explicitly instantiate SimDevice with Device ID 1
+    # Build the memory space using the parsed SimData chunks
     device_store = SimDevice(1, sim_data_list)
 
-    # Dictionary style for device identity
     identity = ModbusDeviceIdentification(
         info_name={
             "VendorName": "Siemens",
@@ -49,10 +78,10 @@ async def run_mock_server(ip="127.0.0.1", port=5020):
         }
     )
 
+    print(f"\n[SUCCESS] Loaded {len(REGISTER_MAP)} registers from REGISTER_MAP.")
     print(f"Starting Mock PAC3220 Server on {ip}:{port}")
-    print("The server is running. Press Ctrl+C to stop.")
+    print("Press Ctrl+C to stop.")
 
-    # 4. Spin up the server passing the modern device configuration list directly
     await StartAsyncTcpServer(
         context=[device_store],
         identity=identity,
@@ -62,8 +91,7 @@ async def run_mock_server(ip="127.0.0.1", port=5020):
 
 if __name__ == "__main__":
     try:
-        asyncio.run(run_mock_server("192.168.1.100", 502))
+        # Run on local testing loop port 5020
+        asyncio.run(run_mock_server("127.0.0.1", 5020))
     except KeyboardInterrupt:
-        print("\nServer stopped by user.")
-    except Exception as e:
-        print(f"\nAn error occurred: {e}")
+        print("\nServer stopped safely.")
