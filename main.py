@@ -44,8 +44,7 @@ else:
     writer = JsonWriter()
     FILENAME += '.json'
 
-FS_STORAGE_PATH = BASE / "storage" / FILENAME
-
+FS_STORAGE_PATH = BASE / "store" / FILENAME
 
 def get_usb_device() -> Path:
     by_path_dir = Path("/dev/disk/by-path")
@@ -92,18 +91,17 @@ def sync(partition: Path):
     lockfile = fs_storage.with_name(fs_storage.name + ".lock")
     lockfile.parent.mkdir(parents=True, exist_ok=True)
 
-    mount_point = fs_storage.parent / "usbmnt"
+    mount_point = fs_storage.parent / "usb"
     mount_point.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Attempting to mount {partition}...")
 
     subprocess.run(
-        ["mount", "-o", "umask=000,sync", str(partition), str(mount_point)],
+        ["sudo", "mount", "-o", "uid=1000,gid=1000,umask=000,sync", str(partition), str(mount_point)],
         check=True, capture_output=True
     )
 
     try:
-        # Create a unique timestamped directory on the USB drive
         timestamp = datetime.now().strftime("%d.%m.%Y_%H.%M.%S")
         mounted_file = mount_point / timestamp / FILENAME
         mounted_file.parent.mkdir(parents=True, exist_ok=True)
@@ -123,7 +121,7 @@ def sync(partition: Path):
     finally:
         logger.info(f"Safely unmounting {mount_point}...")
         subprocess.run(
-            ["umount", "-l", str(mount_point)],
+            ["sudo", "umount", "-l", str(mount_point)],
             check=True, capture_output=True
         )
         logger.info("Unmount successful. USB can be safely removed.")

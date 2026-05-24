@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 
 from Protocol import T
-from Storage import IStorage
 from Storage.Writter import IWriter
+from .IStorage import IStorage
 
 logger = logging.getLogger("FsStorage")
 

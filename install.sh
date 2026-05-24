@@ -1,5 +1,6 @@
 #!/bin/bash
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RUN_SCRIPT="$DIR/run.sh"
 cd "$DIR" || exit 1
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -20,7 +21,7 @@ fi
 
 sudo -u "$REAL_USER" "$DIR/venv/bin/python3" -m pip install -r requirements.txt
 
-RUN_SCRIPT="$DIR/run.sh"
+
 chmod +x "$RUN_SCRIPT"
 
 # --- Install sensor read crontab ---
@@ -51,17 +52,35 @@ fi
 
 # --- UDEV RULE SETUP ---
 UDEV_RULE_PATH="/etc/udev/rules.d/99-usb-sync.rules"
+USB_SYNC_D="/etc/systemd/system/usb-sync@.service"
+SUDOERS_PATH="/etc/sudoers.d/usb-sync-mount"
 
-echo "Installing udev rule (Requires sudo access)..."
+echo "Installing systemd service and udev rule..."
+
+# Create systemd service
+sudo tee "$USB_SYNC_D" > /dev/null << EOF
+[Unit]
+Description=Sync USB partition %I
+
+[Service]
+Type=simple
+ExecStart=$RUN_SCRIPT --sync /dev/%I
+EOF
 
 # Explicitly using sudo to write to system directories securely
-sudo tee "$UDEV_RULE_PATH" > /dev/null << EOF
-ACTION=="add", SUBSYSTEM=="partition", ENV{ID_USB_DRIVER}=="usb-storage", RUN+="$RUN_SCRIPT --sync \$devnode &"
+sudo tee "$UDEV_RULE_PATH" > /dev/null << 'EOF'
+ACTION=="add", SUBSYSTEM=="partition", ENV{ID_USB_DRIVER}=="usb-storage", TAG+="systemd", ENV{SYSTEMD_WANTS}="usb-sync@%k.service"
+EOF
+
+echo "Configuring passwordless sudo permissions for mount/umount..."
+sudo tee "$SUDOERS_PATH" > /dev/null << 'EOF'
+# Allow user with UID 1000 to use mount and umount without a password
+#1000 ALL=(ALL) NOPASSWD: /usr/bin/mount, /usr/bin/umount
 EOF
 
 # Reload udev system configurations
 echo "Reloading udev rules..."
+sudo systemctl daemon-reload
 sudo udevadm control --reload-rules
-sudo udevadm trigger
 
 echo "Installation complete!"
