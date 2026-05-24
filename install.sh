@@ -69,7 +69,7 @@ EOF
 
 # Explicitly using sudo to write to system directories securely
 sudo tee "$UDEV_RULE_PATH" > /dev/null << 'EOF'
-ACTION=="add", SUBSYSTEM=="partition", ENV{ID_USB_DRIVER}=="usb-storage", TAG+="systemd", ENV{SYSTEMD_WANTS}="usb-sync@%k.service"
+ACTION=="add", SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", ENV{ID_USB_DRIVER}=="usb-storage", TAG+="systemd", ENV{SYSTEMD_WANTS}="usb-sync@%k.service"
 EOF
 
 echo "Configuring passwordless sudo permissions for mount/umount..."
