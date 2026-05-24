@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import logging
+import pathlib
 import shutil
 import subprocess
 import sys
@@ -86,37 +87,57 @@ def main():
         logger.error(f"An error occurred: {e}")
 
 
-def sync():
-    lockfile = FS_STORAGE_PATH.with_name(FS_STORAGE_PATH.name + ".lock")
+def sync(partition: Path):
+    fs_storage = Path(FS_STORAGE_PATH)
+    lockfile = fs_storage.with_name(fs_storage.name + ".lock")
     lockfile.parent.mkdir(parents=True, exist_ok=True)
-    device = get_usb_device()
-    mount_point = FS_STORAGE_PATH.parent / "usbmnt"
+
+    mount_point = fs_storage.parent / "usbmnt"
+    mount_point.mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"Attempting to mount {partition}...")
 
     subprocess.run(
-        ["sudo", "mount", "-o", "umask=000,sync", str(device), str(mount_point)],
+        ["mount", "-o", "umask=000,sync", str(partition), str(mount_point)],
         check=True, capture_output=True
     )
 
-    mounted_file = mount_point / datetime.now().strftime("%d.%m.%Y %H.%M.%S") / FILENAME
-    mounted_file.parent.mkdir(parents=True, exist_ok=True)
-    with FileLock(lockfile):
-        shutil.move(FS_STORAGE_PATH, mounted_file)
+    try:
+        # Create a unique timestamped directory on the USB drive
+        timestamp = datetime.now().strftime("%d.%m.%Y_%H.%M.%S")
+        mounted_file = mount_point / timestamp / FILENAME
+        mounted_file.parent.mkdir(parents=True, exist_ok=True)
 
-    subprocess.run(
-        ["sudo", "umount", str(mount_point)],
-        check=True, capture_output=True
-    )
+        logger.info(f"Moving logs securely to USB: {mounted_file}")
+
+        with FileLock(lockfile):
+            if fs_storage.exists():
+                shutil.move(str(fs_storage), str(mounted_file))
+            else:
+                logger.warning(f"Source file {fs_storage} did not exist when lock acquired.")
+
+    except Exception as e:
+        logger.error(f"Error during sync transfer: {e}")
+        raise
+
+    finally:
+        logger.info(f"Safely unmounting {mount_point}...")
+        subprocess.run(
+            ["umount", "-l", str(mount_point)],
+            check=True, capture_output=True
+        )
+        logger.info("Unmount successful. USB can be safely removed.")
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("sync")
+    parser.add_argument("--sync", default=None, type=pathlib.Path)
 
     return parser.parse_args()
 
 if __name__ == '__main__':
     args = parse_args()
     if args.sync:
-        sync()
+        sync(args.sync)
         sys.exit(0)
     main()

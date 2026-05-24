@@ -56,7 +56,7 @@ echo "Installing udev rule (Requires sudo access)..."
 
 # Explicitly using sudo to write to system directories securely
 sudo tee "$UDEV_RULE_PATH" > /dev/null << EOF
-ACTION=="add", SUBSYSTEM=="block", ENV{ID_USB_DRIVER}=="usb-storage", RUN+="$RUN_SCRIPT sync &"
+ACTION=="add", SUBSYSTEM=="partition", ENV{ID_USB_DRIVER}=="usb-storage", RUN+="$RUN_SCRIPT --sync \$devnode &"
 EOF
 
 # Reload udev system configurations
