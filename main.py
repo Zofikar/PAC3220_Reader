@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
+import argparse
 import logging
+import shutil
+import subprocess
+import sys
+from datetime import datetime
 from pathlib import Path
 
 import yaml
 
 from Protocol.Protocol import DictWrapper
+from Storage import FsLockStorage, FileLock
 from Storage.Writter import CsvWriter, JsonWriter
 
 BASE = Path(__file__).parent.absolute()
@@ -20,52 +26,49 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+config_file = BASE / "config.yaml"
+config = {}
+try:
+    with open(config_file) as f:
+        config = yaml.safe_load(f)
+except FileNotFoundError:
+    logger.warning(f"Config {config_file} not found.")
+
+FILENAME = "data"
+writer_type = config.get("writer", "json")
+if writer_type == "csv":
+    writer = CsvWriter()
+    FILENAME += '.csv'
+else:
+    writer = JsonWriter()
+    FILENAME += '.json'
+
+FS_STORAGE_PATH = BASE / "storage" / FILENAME
+
+
+def get_usb_device() -> Path:
+    by_path_dir = Path("/dev/disk/by-path")
+
+    if by_path_dir.is_dir():
+        for link in by_path_dir.iterdir():
+            if "-usb-" in link.name and link.name.endswith("-part1"):
+                try:
+                    real_device_path = link.resolve(strict=True)
+                    return real_device_path
+                except FileNotFoundError:
+                    continue
+
+    fallback_path = Path("/dev/sda1")
+    if fallback_path.exists():
+        return fallback_path
+
+    raise FileNotFoundError("Hotswap Failure: No active USB storage partition detected on the hub.")
 
 def main():
-    config_file = BASE / "config.yaml"
-    config = {}
-    try:
-        with open(config_file) as f:
-            config = yaml.safe_load(f)
-    except FileNotFoundError:
-        logger.warning(f"Config {config_file} not found.")
 
     from Reader import Pac3220ModbusReader, Pac3220ModbusFactory
-    from Storage import FsStorage, MountStorage, TieredStorage
 
-    def get_usb_device() -> Path:
-        by_path_dir = Path("/dev/disk/by-path")
-
-        if by_path_dir.is_dir():
-            for link in by_path_dir.iterdir():
-                if "-usb-" in link.name and link.name.endswith("-part1"):
-                    try:
-                        real_device_path = link.resolve(strict=True)
-                        return real_device_path
-                    except FileNotFoundError:
-                        continue
-
-        fallback_path = Path("/dev/sda1")
-        if fallback_path.exists():
-            return fallback_path
-
-        raise FileNotFoundError("Hotswap Failure: No active USB storage partition detected on the hub.")
-
-    FILENAME = "data"
-    writer_type = config.get("writer", "json")
-    if writer_type == "csv":
-        writer = CsvWriter()
-        FILENAME += '.csv'
-    else:
-        writer = JsonWriter()
-        FILENAME += '.json'
-
-    FAILOVER_STORAGE_PATH = BASE / "failover" / FILENAME
-
-    storage_engine = TieredStorage[DictWrapper]([
-        MountStorage[DictWrapper](get_usb_device, USB_MOUNT_POINT, FILENAME, "USB", writer=writer),
-        FsStorage[DictWrapper](target_file_path=FAILOVER_STORAGE_PATH, storage_label="FAILOVER", writer=writer)
-    ])
+    storage_engine = FsLockStorage[DictWrapper](target_file_path=FS_STORAGE_PATH, storage_label="FS", writer=writer)
 
     device_ip = config.get("device_ip", "127.0.0.1")
     device_port = int(config.get("device_port", 5020))
@@ -83,5 +86,37 @@ def main():
         logger.error(f"An error occurred: {e}")
 
 
+def sync():
+    lockfile = FS_STORAGE_PATH.with_name(FS_STORAGE_PATH.name + ".lock")
+    lockfile.parent.mkdir(parents=True, exist_ok=True)
+    device = get_usb_device()
+    mount_point = FS_STORAGE_PATH.parent / "usbmnt"
+
+    subprocess.run(
+        ["sudo", "mount", "-o", "umask=000,sync", str(device), str(mount_point)],
+        check=True, capture_output=True
+    )
+
+    mounted_file = mount_point / datetime.now().strftime("%d.%m.%Y %H.%M.%S") / FILENAME
+    mounted_file.parent.mkdir(parents=True, exist_ok=True)
+    with FileLock(lockfile):
+        shutil.move(FS_STORAGE_PATH, mounted_file)
+
+    subprocess.run(
+        ["sudo", "umount", str(mount_point)],
+        check=True, capture_output=True
+    )
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("sync")
+
+    return parser.parse_args()
+
 if __name__ == '__main__':
+    args = parse_args()
+    if args.sync:
+        sync()
+        sys.exit(0)
     main()
