@@ -27,23 +27,27 @@ chmod +x "$RUN_SCRIPT"
 CRON_PATH="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 CRON_JOB="* * * * * $RUN_SCRIPT >> $DIR/cron_output.log 2>&1"
 
-TMP_CRON=$(mktemp)
-sudo -u "$REAL_USER" crontab -l 2>/dev/null | sudo -u "$REAL_USER" tee "$TMP_CRON" > /dev/null
+echo "Installing cron job for user: $REAL_USER..."
 
-if ! grep -q "PATH=" "$TMP_CRON"; then
-  CRON_CONTENT=$(cat "$TMP_CRON")
-  echo -e "$CRON_PATH\n$CRON_CONTENT" | sudo -u "$REAL_USER" tee "$TMP_CRON" > /dev/null
-fi
+EXISTING_CRON=$(sudo -u "$REAL_USER" crontab -l 2>/dev/null)
 
-if ! grep -q "$RUN_SCRIPT" "$TMP_CRON"; then
-  echo "$CRON_JOB" >> "$TMP_CRON"
-  sudo -u "$REAL_USER" crontab "$TMP_CRON"
-  echo "Successfully installed cron job!"
-else
+if echo "$EXISTING_CRON" | grep -q "$RUN_SCRIPT"; then
   echo "Cron job configuration already exists. Skipping."
-fi
+else
+  NEW_CRON=""
 
-rm "$TMP_CRON"
+  if ! echo "$EXISTING_CRON" | grep -q "PATH="; then
+    NEW_CRON="$CRON_PATH"$'\n'
+  fi
+
+  if [ -n "$EXISTING_CRON" ]; then
+    NEW_CRON="$NEW_CRON$EXISTING_CRON"$'\n'
+  fi
+  NEW_CRON="$NEW_CRON$CRON_JOB"
+
+  echo "$NEW_CRON" | sudo -u "$REAL_USER" crontab -
+  echo "Successfully installed cron job!"
+fi
 
 # --- UDEV RULE SETUP ---
 UDEV_RULE_PATH="/etc/udev/rules.d/99-usb-sync.rules"
