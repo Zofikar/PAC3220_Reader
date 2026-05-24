@@ -6,26 +6,29 @@ import shutil
 import subprocess
 import sys
 from datetime import datetime
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 import yaml
 
-from Protocol.Protocol import DictWrapper
-from Storage import FsLockStorage, FileLock
-from Storage.Writter import CsvWriter, JsonWriter
-
 BASE = Path(__file__).parent.absolute()
 
-logfile = BASE / "log.txt"
+logfile = BASE / "logs" / "log.txt"
 logfile.parent.mkdir(parents=True, exist_ok=True)
 USB_MOUNT_POINT = BASE / "usb"
+
 logging.basicConfig(
-    filename=logfile,
-    filemode="a",
+    handlers=[
+        RotatingFileHandler(str(logfile), maxBytes=5 * 1024 * 1024, backupCount=3)
+    ],
     format="[%(asctime)s] %(name)s - %(levelname)s - %(funcName)s(%(lineno)d) - %(message)s",
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+from Protocol.Protocol import DictWrapper
+from Storage import FsLockStorage, FileLock
+from Storage.Writter import CsvWriter, JsonWriter
 
 config_file = BASE / "config.yaml"
 config = {}
