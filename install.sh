@@ -26,7 +26,7 @@ chmod +x "$RUN_SCRIPT"
 
 # --- Install sensor read crontab ---
 CRON_PATH="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-CRON_JOB="* * * * * $RUN_SCRIPT >> $DIR/cron_output.log 2>&1"
+CRON_JOB="0 * * * * $RUN_SCRIPT >> $DIR/cron_output.log 2>&1"
 
 echo "Installing cron job for user: $REAL_USER..."
 
