@@ -97,6 +97,8 @@ def sync(partition: Path):
     mount_point = fs_storage.parent / "usb"
     mount_point.mkdir(parents=True, exist_ok=True)
 
+    clean_file = mount_point / "clean.txt"
+
     logger.info(f"Attempting to mount {partition}...")
 
     subprocess.run(
@@ -113,7 +115,10 @@ def sync(partition: Path):
 
         with FileLock(lockfile):
             if fs_storage.exists():
-                shutil.move(str(fs_storage), str(mounted_file))
+                if clean_file.exists():
+                    shutil.move(str(fs_storage), str(mounted_file))
+                else:
+                    shutil.copy2(str(fs_storage), str(mounted_file))
             else:
                 logger.warning(f"Source file {fs_storage} did not exist when lock acquired.")
 
