@@ -1,4 +1,4 @@
-registers: [ 139,801,817,825 ]
+registers: [ 139,801,817,825,501,503,507,509 ]
 writer: csv
 device_ip: 192.168.1.100
 device_port: 502
