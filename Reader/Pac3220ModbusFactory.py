@@ -4,9 +4,9 @@ from typing import Any
 
 from pymodbus.client import ModbusTcpClient
 
+from ModbusDefinition import REGISTER_MAP
 from Protocol.Protocol import DictWrapper
 from .Pac3220ModbusReader import Pac3320ModbusDataFactory
-from .modbus_map import REGISTER_MAP
 
 logger = logging.getLogger(__name__)
 

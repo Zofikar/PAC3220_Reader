@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from Reader.modbus_map import REGISTER_NAME_TO_ADDRESS
+from ModbusDefinition import REGISTER_NAME_TO_ADDRESS
 from .IWriter import IWriter
 
 

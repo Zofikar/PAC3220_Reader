@@ -1,0 +1,1 @@
+from modbus_map import REGISTER_MAP, REGISTER_NAME_TO_ADDRESS
