@@ -686,3 +686,5 @@ REGISTER_MAP = {
         ModbusTcpClient.DATATYPE.FLOAT64
     ),
 }
+
+REGISTER_NAME_TO_ADDRESS = (lambda: {value[0]: idx for idx, value in REGISTER_MAP.items()})()

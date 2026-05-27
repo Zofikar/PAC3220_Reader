@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from Reader.modbus_map import REGISTER_NAME_TO_ADDRESS
 from .IWriter import IWriter
 
 
@@ -26,7 +27,7 @@ class CsvWriter(IWriter):
         header, data = self.__read(file)
         keys.update(header)
         data.append(new_entry)
-        keys = sorted(list(keys))
+        keys = sorted(list(keys), key=lambda x: REGISTER_NAME_TO_ADDRESS[x])
         with open(file, "w", newline='', encoding='utf-8') as _fp:
             writer = csv.writer(_fp, delimiter=';')
             writer.writerow(keys)
