@@ -27,7 +27,8 @@ class CsvWriter(IWriter):
         header, data = self.__read(file)
         keys.update(header)
         data.append(new_entry)
-        keys = sorted(list(keys), key=lambda x: REGISTER_NAME_TO_ADDRESS[x])
+        keys = sorted(list(keys), key=lambda x: REGISTER_NAME_TO_ADDRESS[x] if x != "timestamp" else max(
+            *REGISTER_NAME_TO_ADDRESS.values()) + 1)
         with open(file, "w", newline='', encoding='utf-8') as _fp:
             writer = csv.writer(_fp, delimiter=';')
             writer.writerow(keys)
